@@ -80,6 +80,13 @@ class Stack:
             elif token in {'aspetta', 'pause'}:
                 input("Premi un tasto per continuare...")
 
+            elif 'cancella' in token:
+                variable_to_cancel = token.replace('cancella', '').strip()
+                if variable_to_cancel in self.variables:
+                    del self.variables[variable_to_cancel]
+                else:
+                    print(f"Errore: La variabile '{variable_to_cancel}' non è presente.")
+
             elif '#' in token:
                 continue
 
@@ -120,6 +127,8 @@ class Stack:
 
         if command == 'somma':  # Summing up all operands
             result = sum(operands)
+
+        
         else:
             raise ValueError(f"Operazione '{command}' non riconosciuta.")
 
@@ -139,7 +148,7 @@ class Stack:
             func_code.append(line)
 
         self.functions[func_name] = func_code
-        print(f"Function '{func_name}' defined.")
+
 
     def _execute_function(self, func_name: str) -> None:
         func_code = self.functions[func_name]
