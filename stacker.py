@@ -230,3 +230,11 @@ class Stack:
 stack = Stack(256)
 stack.carica_codice('test.mafati')
 stack.interpreta()
+
+
+
+
+# END OF CODE
+# THIS PROGRAM IS LICENSED UNDERT THE:
+# MIT License
+# Copyright (c) 2024 Mario Pisano
