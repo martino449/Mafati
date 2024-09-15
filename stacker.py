@@ -1,6 +1,7 @@
 import operator
 import ast
 from typing import Any, Dict, List
+import math as mt
 
 class Stack:
     def __init__(self, lunghezza: int) -> None:
@@ -31,7 +32,12 @@ class Stack:
             token = self.stack[self.p]
             self.p += 1
 
-            if '=' in token:
+            if token.startswith('se '):
+                self._handle_if(token)
+            
+            elif 'radquad' in token:
+                self._handle_sqrt(token)
+            elif '=' in token:
                 var_name, expression = map(str.strip, token.split('=', 1))
                 value = self._safe_eval(expression)
                 if var_name.startswith('const_'):
@@ -60,13 +66,12 @@ class Stack:
             elif token in self.functions:
                 self._execute_function(token)
 
-            elif token.startswith('if '):
-                self._handle_if(token)
 
-            elif token == 'else':
+
+            elif token == 'altrimenti':
                 self._handle_else()
-
-            elif token == 'end if':
+            
+            elif token == 'end':
                 continue
 
             elif token == 'debug':
@@ -115,7 +120,11 @@ class Stack:
 
         self.variables[var_name] = result
         print(f"{var_name} = {result}")
-
+    
+    def _handle_sqrt(self, token: str) -> None:
+        parts = token.split(',')
+        var_name = parts[0].split()[-1]  # Extract var_name from the first token part
+        self.variables[var_name] = mt.sqrt(self._resolve_name(parts[1].strip()))
     def _handle_generic_operation(self, token: str) -> None:
         # Token example: 'aggiungi somma c, a, b'
         parts = token.split()  # Split by spaces
@@ -163,17 +172,17 @@ class Stack:
         self.p = original_p
 
     def _handle_if(self, token: str) -> None:
-        condition = token.split('if ')[1].split(' then')[0].strip()
+        condition = token.split('se ')[1].split(' allora')[0].strip()
         if self._safe_eval(condition):
             return  # Continue execution if true
         else:
             # Skip lines until 'else' or 'end if'
-            while self.p < len(self.stack) and not self.stack[self.p].startswith('else') and not self.stack[self.p].startswith('end if'):
+            while self.p < len(self.stack) and not self.stack[self.p].startswith('altrimenti') and not self.stack[self.p].startswith('end'):
                 self.p += 1
 
     def _handle_else(self) -> None:
         # Skip until 'end if'
-        while self.p < len(self.stack) and not self.stack[self.p].startswith('end if'):
+        while self.p < len(self.stack) and not self.stack[self.p].startswith('end'):
             self.p += 1
 
     def _resolve_name(self, name: str) -> Any:
@@ -227,14 +236,6 @@ class Stack:
 
 
 # Example usage
-stack = Stack(256)
+stack = Stack(25)
 stack.carica_codice('test.mafati')
 stack.interpreta()
-
-
-
-
-# END OF CODE
-# THIS PROGRAM IS LICENSED UNDERT THE:
-# MIT License
-# Copyright (c) 2024 Mario Pisano
