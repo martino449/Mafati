@@ -235,7 +235,4 @@ class Stack:
             raise ValueError(f"Tipo di nodo AST '{type(node)}' non supportato.")
 
 
-# Example usage
-stack = Stack(25)
-stack.carica_codice('test.mafati')
-stack.interpreta()
+
