@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 import math as mt
 
 class Stack:
-    def __init__(self, lunghezza: int) -> None:
+    def __init__(self, lunghezza: int=256) -> None:
         self.lunghezza = lunghezza
         self.stack: List[str] = []
         self.variables: Dict[str, Any] = {}
@@ -37,6 +37,9 @@ class Stack:
             
             elif 'radquad' in token:
                 self._handle_sqrt(token)
+            
+            elif 'quad' in token:
+                self._handle_quad(token)
             elif '=' in token:
                 var_name, expression = map(str.strip, token.split('=', 1))
                 value = self._safe_eval(expression)
@@ -47,56 +50,57 @@ class Stack:
                         self.const[var_name] = value
                 else:
                     self.variables[var_name] = value
-
-            elif token.startswith('stampa'):
-                self._handle_print(token.replace('stampa', '').strip())
-
-            elif token.startswith('aggiungi'):
-                self._handle_generic_operation(token)
-
-            elif token.startswith('moltiplica'):
-                self._handle_operation(token, operator.mul)
-
-            elif token.startswith('somma'):
-                self._handle_operation(token, sum)
-
-            elif token.startswith('def '):
-                self._define_function(token)
-
-            elif token in self.functions:
-                self._execute_function(token)
-
-
-
-            elif token == 'altrimenti':
-                self._handle_else()
-            
-            elif token == 'end':
-                continue
-
-            elif token == 'debug':
-                print("=== DEBUG INFO ===")
-                print(f"Stack: {self.stack}")
-                print(f"Variables: {self.variables}")
-                print(f"Constants: {self.const}")
-                print(f"Functions: {self.functions}")
-                print("==================")
-
-            elif token in {'aspetta', 'pause'}:
-                input("Premi un tasto per continuare...")
-
-            elif 'cancella' in token:
-                variable_to_cancel = token.replace('cancella', '').strip()
-                if variable_to_cancel in self.variables:
-                    del self.variables[variable_to_cancel]
-                else:
-                    print(f"Errore: La variabile '{variable_to_cancel}' non è presente.")
-
-            elif '#' in token:
-                continue
-
             else:
-                print(f"Errore: '{token}' non è un'espressione valida.")
+                match(token):
+
+                    case token if token.startswith('stampa'):
+                        self._handle_print(token.replace('stampa', '').strip())
+
+                    case token if token.startswith('aggiungi'):
+                        self._handle_generic_operation(token)
+
+                    case token if token.startswith('moltiplica'):
+                        self._handle_operation(token, operator.mul)
+
+                    case token if token.startswith('somma'):
+                        self._handle_operation(token, sum)
+
+                    case token if token.startswith('def '):
+                        self._define_function(token)
+
+                    case token if token in self.functions:
+                        self._execute_function(token)
+
+                    case 'altrimenti':
+                        self._handle_else()
+
+                    case 'end':
+                        continue
+
+                    case 'debug':
+                        print("=== DEBUG INFO ===")
+                        print(f"Stack: {self.stack}")
+                        print(f"Variables: {self.variables}")
+                        print(f"Constants: {self.const}")
+                        print(f"Functions: {self.functions}")
+                        print("==================")
+
+                    case token if token in {'aspetta', 'pause'}:
+                        input("Premi un tasto per continuare...")
+
+                    case token if 'cancella' in token:
+                        variable_to_cancel = token.replace('cancella', '').strip()
+                        if variable_to_cancel in self.variables:
+                            del self.variables[variable_to_cancel]
+                        else:
+                            print(f"Errore: La variabile '{variable_to_cancel}' non è presente.")
+
+                    case token if '#' in token:
+                        continue  # Ignore comments
+
+                    case _:
+                        print(f"Errore: '{token}' non è un'espressione valida.")
+
 
     def _handle_print(self, item: str) -> None:
         if item in self.variables:
@@ -125,6 +129,12 @@ class Stack:
         parts = token.split(',')
         var_name = parts[0].split()[-1]  # Extract var_name from the first token part
         self.variables[var_name] = mt.sqrt(self._resolve_name(parts[1].strip()))
+    
+    def _handle_quad(self, token: str) -> None:
+        parts = token.split(',')
+        var_name = parts[0].split()[-1]  # Extract var_name from the first token part
+        self.variables[var_name] = mt.pow(self._resolve_name(parts[1].strip()), 2)
+                
     def _handle_generic_operation(self, token: str) -> None:
         # Token example: 'aggiungi somma c, a, b'
         parts = token.split()  # Split by spaces
@@ -201,38 +211,47 @@ class Stack:
             raise ValueError(f"Errore: L'espressione '{expression}' non è valida. ({e})")
 
     def _eval_ast(self, node: ast.AST) -> Any:
-        if isinstance(node, ast.Constant):
-            return node.value
-        elif isinstance(node, ast.Name):
-            return self._resolve_name(node.id)
-        elif isinstance(node, ast.BinOp):
-            left = self._eval_ast(node.left)
-            right = self._eval_ast(node.right)
-            operator_type = type(node.op)
-            if operator_type in self.operators:
-                return self.operators[operator_type](left, right)
-            else:
-                raise ValueError(f"Operatore '{operator_type}' non supportato.")
-        elif isinstance(node, ast.Compare):  # Handle comparisons
-            left = self._eval_ast(node.left)
-            right = self._eval_ast(node.comparators[0])  # Assumes simple comparison
-            operator_type = type(node.ops[0])
-            if operator_type == ast.Gt:
-                return left > right
-            elif operator_type == ast.Lt:
-                return left < right
-            elif operator_type == ast.GtE:
-                return left >= right
-            elif operator_type == ast.LtE:
-                return left <= right
-            elif operator_type == ast.Eq:
-                return left == right
-            elif operator_type == ast.NotEq:
-                return left != right
-            else:
-                raise ValueError(f"Operatore di confronto '{operator_type}' non supportato.")
-        else:
-            raise ValueError(f"Tipo di nodo AST '{type(node)}' non supportato.")
+        match node:
+            case ast.Constant():
+                return node.value
+            
+            case ast.Name():
+                return self._resolve_name(node.id)
+            
+            case ast.BinOp():
+                left = self._eval_ast(node.left)
+                right = self._eval_ast(node.right)
+                operator_type = type(node.op)
+                if operator_type in self.operators:
+                    return self.operators[operator_type](left, right)
+                else:
+                    raise ValueError(f"Operatore '{operator_type}' non supportato.")
+            
+            case ast.Compare():
+                left = self._eval_ast(node.left)
+                right = self._eval_ast(node.comparators[0])  # Assumes simple comparison
+                operator_type = type(node.ops[0])
+                match operator_type:
+                    case ast.Gt:
+                        return left > right
+                    case ast.Lt:
+                        return left < right
+                    case ast.GtE:
+                        return left >= right
+                    case ast.LtE:
+                        return left <= right
+                    case ast.Eq:
+                        return left == right
+                    case ast.NotEq:
+                        return left != right
+                    case _:
+                        raise ValueError(f"Operatore di confronto '{operator_type}' non supportato.")
+            
+            case _:
+                raise ValueError(f"Tipo di nodo AST '{type(node)}' non supportato.")
 
 
+stack = Stack()
+stack.carica_codice('codice.maft')
+stack.interpreta()
 
