@@ -2,6 +2,9 @@ import operator
 import ast
 from typing import Any, Dict, List
 import math as mt
+import time
+
+
 
 class Stack:
     def __init__(self, lunghezza: int = 256, librerie: List[str] = []) -> None:
@@ -17,7 +20,10 @@ class Stack:
             ast.Sub: operator.sub,
             ast.Mult: operator.mul,
             ast.Div: operator.truediv,
-            ast.Pow: operator.pow
+            ast.Pow: operator.pow,
+            ast.Mod: operator.mod,          # Modulo
+            ast.FloorDiv: operator.floordiv, # Divisione intera
+            ast.USub: operator.neg          # Negazione unaria
         }
         self.p = 0
 
@@ -57,41 +63,37 @@ class Stack:
             else:
                 self._handle_token(token)
 
-    def _handle_token(self, token: str) -> None:
-        """Handle different types of tokens, including lambda execution."""
-        match token:
-            case _ if 'radquand' in token:
-                self._handle_sqrt(token)
-            case _ if 'quad' in token:
-                self._handle_quad(token)
-            case _ if '=' in token:
-                self._assign_variable(token)
-            case _ if token.startswith('cancella '):
-                self._delete_variable(token)
-            case _ if token.startswith('stampa'):
-                self._handle_print(token.replace('stampa', '').strip())
-            case _ if token.startswith('aggiungi'):
-                self._handle_generic_operation(token)
-            case _ if token.startswith('moltiplica'):
-                self._handle_operation(token, operator.mul)
-            case _ if token.startswith('somma'):
-                self._handle_operation(token, sum)
-            case _ if token.startswith('public '):
-                self._define_function(token)
-            case token if token in self.functions:
-                self._execute_function(token)
-            case 'altrimenti':
-                self._handle_else()
-            case 'end':
-                pass
-            case 'debug':
-                self._debug_info()
-            case token if token in {'aspetta', 'pause'}:
-                input("Premi un tasto per continuare...")
-            case _ if '#' in token:
-                pass  # Ignore comments
-            case _:
-                print(f"Errore: '{token}' non è un'espressione valida.")
+    def _handle_token(self, token):
+        """Handle a single token in the stack."""
+        actions = {
+            'radquand': self._handle_sqrt,
+            'quad': self._handle_quad,
+            '=': self._assign_variable,
+            'cancella ': self._delete_variable,
+            'stampa': lambda t: self._handle_print(t.replace('stampa', '').strip()),
+            'aggiungi': self._handle_generic_operation,
+            'moltiplica': lambda t: self._handle_operation(t, operator.mul),
+            'somma': lambda t: self._handle_operation(t, sum),
+            'public ': self._define_function,
+            'altrimenti': self._handle_else,
+            'end': lambda t: None,
+            'debug': self._debug_info,
+        }
+
+        for key, action in actions.items():
+            if key in token:
+                action(token)
+                return
+
+        if token in self.functions:
+            self._execute_function(token)
+        elif token in {'aspetta', 'pause'}:
+            input("Premi un tasto per continuare...")
+        elif '#' in token:
+            pass  # Ignore comments
+        else:
+            print(f"Errore: '{token}' non è un'espressione valida.")
+
 
     def _assign_variable(self, token: str) -> None:
         """Assign a value to a variable, including lambda functions and lambda calls."""
@@ -286,7 +288,8 @@ class Stack:
             case _:
                 raise ValueError("Nodo non supportato nel AST.")
 
-# Test code (if file exists)
-stack = Stack()
-stack.load_code('code.maft')
-stack.interpreta()
+
+
+stacker = Stack()
+stacker.load_code('code.maft')
+stacker.interpreta()
