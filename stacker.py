@@ -4,105 +4,154 @@ from typing import Any, Dict, List
 import math as mt
 
 class Stack:
-    def __init__(self, lunghezza: int=256) -> None:
+    def __init__(self, lunghezza: int = 256, librerie: List[str] = []) -> None:
         self.lunghezza = lunghezza
         self.stack: List[str] = []
         self.variables: Dict[str, Any] = {}
         self.const: Dict[str, Any] = {}
-        self.functions: Dict[str, List[str]] = {}  # Store functions
+        self.functions: Dict[str, List[str]] = {}
+        self.librerie = librerie
+        self.libstack: List[str] = []  # Stores library contents
         self.operators = {
             ast.Add: operator.add,
             ast.Sub: operator.sub,
             ast.Mult: operator.mul,
             ast.Div: operator.truediv,
+            ast.Pow: operator.pow
         }
         self.p = 0
 
-    def carica_codice(self, file_codice: str) -> None:
+
+    def _load_library(self, libreria: str) -> None:
+        """Load a library from a file and append its contents to libstack."""
+        with open(libreria, 'r') as f:
+            self.libstack.extend(line.strip() for line in f if line.strip())
+
+    def load_code(self, file_codice: str) -> None:
+        """Load code from a specified file into the stack."""
         try:
             with open(file_codice, 'r') as f:
-                self.stack = [line.strip() for line in f if line.strip()]
+                self.stack += [line.strip() for line in f if line.strip()]
             if len(self.stack) > self.lunghezza:
                 raise ValueError(f"Errore: La lunghezza della pila supera il limite ({self.lunghezza}).")
         except FileNotFoundError:
             raise FileNotFoundError(f"Errore: Il file '{file_codice}' non esiste.")
 
     def interpreta(self) -> None:
+        """Interpret and execute the code in the stack."""
+        self.stack.extend(self.libstack)  # Merge library code into the main stack
+        
         while self.p < len(self.stack):
             token = self.stack[self.p]
             self.p += 1
 
             if token.startswith('se '):
                 self._handle_if(token)
-            
-            elif 'radquad' in token:
-                self._handle_sqrt(token)
-            
-            elif 'quad' in token:
-                self._handle_quad(token)
-            elif '=' in token:
-                var_name, expression = map(str.strip, token.split('=', 1))
-                value = self._safe_eval(expression)
-                if var_name.startswith('const_'):
-                    if var_name in self.const:
-                        print(f"Errore: La costante '{var_name}' non può essere modificata.")
-                    else:
-                        self.const[var_name] = value
-                else:
-                    self.variables[var_name] = value
+            elif 'carica' in token:
+                self._load_library(token.replace('carica', '').strip() + '.mlib')
+            elif 'var' in token:
+                for var in token.replace('var', '').replace(',', '').strip().split():
+                    self.variables[var] = 0
+            elif '#' in token:
+                continue
             else:
-                match(token):
+                self._handle_token(token)
 
-                    case token if token.startswith('stampa'):
-                        self._handle_print(token.replace('stampa', '').strip())
+    def _handle_token(self, token: str) -> None:
+        """Handle different types of tokens, including lambda execution."""
+        match token:
+            case _ if 'radquand' in token:
+                self._handle_sqrt(token)
+            case _ if 'quad' in token:
+                self._handle_quad(token)
+            case _ if '=' in token:
+                self._assign_variable(token)
+            case _ if token.startswith('cancella '):
+                self._delete_variable(token)
+            case _ if token.startswith('stampa'):
+                self._handle_print(token.replace('stampa', '').strip())
+            case _ if token.startswith('aggiungi'):
+                self._handle_generic_operation(token)
+            case _ if token.startswith('moltiplica'):
+                self._handle_operation(token, operator.mul)
+            case _ if token.startswith('somma'):
+                self._handle_operation(token, sum)
+            case _ if token.startswith('public '):
+                self._define_function(token)
+            case token if token in self.functions:
+                self._execute_function(token)
+            case 'altrimenti':
+                self._handle_else()
+            case 'end':
+                pass
+            case 'debug':
+                self._debug_info()
+            case token if token in {'aspetta', 'pause'}:
+                input("Premi un tasto per continuare...")
+            case _ if '#' in token:
+                pass  # Ignore comments
+            case _:
+                print(f"Errore: '{token}' non è un'espressione valida.")
 
-                    case token if token.startswith('aggiungi'):
-                        self._handle_generic_operation(token)
+    def _assign_variable(self, token: str) -> None:
+        """Assign a value to a variable, including lambda functions and lambda calls."""
+        var_name, expression = map(str.strip, token.split('=', 1))
 
-                    case token if token.startswith('moltiplica'):
-                        self._handle_operation(token, operator.mul)
+        # Check if it's a lambda call, e.g., x(5)
+        if '(' in expression and ')' in expression:
+            func_name, arg_str = expression.split('(', 1)
+            func_name = func_name.strip()
+            args = arg_str.replace(')', '').split(',')
 
-                    case token if token.startswith('somma'):
-                        self._handle_operation(token, sum)
+            # Resolve the function and its arguments
+            if func_name in self.variables and callable(self.variables[func_name]):
+                func = self.variables[func_name]
+                resolved_args = [self._resolve_name(arg.strip()) for arg in args]
+                result = func(*resolved_args)
+                self.variables[var_name] = result
+            else:
+                raise ValueError(f"Errore: '{func_name}' non è una funzione valida.")
+        
+        # Check if the expression is a lambda function
+        elif 'lambda' in expression:
+            # Parse the lambda expression
+            param, body = expression.split(':', 1)
+            param = param.replace('lambda', '').strip()
+            body = body.strip()
 
-                    case token if token.startswith('def '):
-                        self._define_function(token)
+            # Define and store the lambda function
+            self.variables[var_name] = eval(f"lambda {param}: {body}")
+        
+        # Regular variable assignment
+        else:
+            value = self._safe_eval(expression)
+            if var_name.startswith('const_'):
+                if var_name in self.const:
+                    print(f"Errore: La costante '{var_name}' non può essere modificata.")
+                else:
+                    self.const[var_name] = value
+            else:
+                self.variables[var_name] = value
 
-                    case token if token in self.functions:
-                        self._execute_function(token)
+    def _delete_variable(self, token: str) -> None:
+        """Delete a variable from the stack."""
+        var_name = token.replace('cancella ', '').strip()
+        if var_name in self.variables:
+            del self.variables[var_name]
+        else:
+            print(f"Errore: La variabile '{var_name}' non è presente.")
 
-                    case 'altrimenti':
-                        self._handle_else()
-
-                    case 'end':
-                        continue
-
-                    case 'debug':
-                        print("=== DEBUG INFO ===")
-                        print(f"Stack: {self.stack}")
-                        print(f"Variables: {self.variables}")
-                        print(f"Constants: {self.const}")
-                        print(f"Functions: {self.functions}")
-                        print("==================")
-
-                    case token if token in {'aspetta', 'pause'}:
-                        input("Premi un tasto per continuare...")
-
-                    case token if 'cancella' in token:
-                        variable_to_cancel = token.replace('cancella', '').strip()
-                        if variable_to_cancel in self.variables:
-                            del self.variables[variable_to_cancel]
-                        else:
-                            print(f"Errore: La variabile '{variable_to_cancel}' non è presente.")
-
-                    case token if '#' in token:
-                        continue  # Ignore comments
-
-                    case _:
-                        print(f"Errore: '{token}' non è un'espressione valida.")
-
+    def _debug_info(self) -> None:
+        """Print debug information."""
+        print("=== DEBUG INFO ===")
+        print(f"Stack: {self.stack}")
+        print(f"Variables: {self.variables}")
+        print(f"Constants: {self.const}")
+        print(f"Functions: {self.functions}")
+        print("==================")
 
     def _handle_print(self, item: str) -> None:
+        """Print the value of a variable or constant."""
         if item in self.variables:
             print(self.variables[item])
         elif item in self.const:
@@ -111,51 +160,53 @@ class Stack:
             print(item)
 
     def _handle_operation(self, token: str, op: Any) -> None:
+        """Perform an operation and store the result in a variable."""
         parts = token.split(',')
-        var_name = parts[0].split()[-1]  # Extract var_name from the first token part
+        var_name = parts[0].split()[-1]
         operands = [self._resolve_name(part.strip()) for part in parts[1:]]
 
         if op == sum:
             result = sum(operands)
-        else:  # Assume it's a binary operation like multiplication
+        else:
             result = operands[0]
             for operand in operands[1:]:
                 result = op(result, operand)
 
         self.variables[var_name] = result
         print(f"{var_name} = {result}")
-    
+
     def _handle_sqrt(self, token: str) -> None:
+        """Calculate the square root and store the result in a variable."""
         parts = token.split(',')
-        var_name = parts[0].split()[-1]  # Extract var_name from the first token part
+        var_name = parts[0].split()[-1]
         self.variables[var_name] = mt.sqrt(self._resolve_name(parts[1].strip()))
-    
+
     def _handle_quad(self, token: str) -> None:
         parts = token.split(',')
+        if len(parts) < 2:
+            print(f"Errore: token '{token}' non contiene abbastanza parti per il quadrato.")
+            return
+
         var_name = parts[0].split()[-1]  # Extract var_name from the first token part
         self.variables[var_name] = mt.pow(self._resolve_name(parts[1].strip()), 2)
-                
+
     def _handle_generic_operation(self, token: str) -> None:
-        # Token example: 'aggiungi somma c, a, b'
-        parts = token.split()  # Split by spaces
-        command = parts[1]     # 'somma' is the operation
-        var_name = parts[2].rstrip(',')  # Variable to store the result, remove trailing commas
+        """Handle generic operations like addition."""
+        parts = token.split()
+        command = parts[1]
+        var_name = parts[2].rstrip(',')
+        operands = [self._resolve_name(part.strip().rstrip(',')) for part in parts[3:]]
 
-        # Extract operands from the rest of the parts, and ensure they are properly trimmed
-        operands = [self._resolve_name(part.strip().rstrip(',')) for part in parts[3:]]  
-
-        if command == 'somma':  # Summing up all operands
+        if command == 'somma':
             result = sum(operands)
-
-        
         else:
             raise ValueError(f"Operazione '{command}' non riconosciuta.")
 
         self.variables[var_name] = result
         print(f"{var_name} = {result}")
 
-
     def _define_function(self, token: str) -> None:
+        """Define a new function."""
         func_name = token.split()[1]
         func_code = []
 
@@ -168,8 +219,8 @@ class Stack:
 
         self.functions[func_name] = func_code
 
-
     def _execute_function(self, func_name: str) -> None:
+        """Execute a previously defined function."""
         func_code = self.functions[func_name]
         original_stack = self.stack.copy()
         original_p = self.p
@@ -182,20 +233,21 @@ class Stack:
         self.p = original_p
 
     def _handle_if(self, token: str) -> None:
+        """Handle if statements."""
         condition = token.split('se ')[1].split(' allora')[0].strip()
         if self._safe_eval(condition):
-            return  # Continue execution if true
+            return
         else:
-            # Skip lines until 'else' or 'end if'
             while self.p < len(self.stack) and not self.stack[self.p].startswith('altrimenti') and not self.stack[self.p].startswith('end'):
                 self.p += 1
 
     def _handle_else(self) -> None:
-        # Skip until 'end if'
+        """Handle else statements."""
         while self.p < len(self.stack) and not self.stack[self.p].startswith('end'):
             self.p += 1
 
     def _resolve_name(self, name: str) -> Any:
+        """Resolve a variable or constant name to its value."""
         if name in self.variables:
             return self.variables[name]
         elif name in self.const:
@@ -204,6 +256,7 @@ class Stack:
             return float(name)  # Assume it's a number if not found
 
     def _safe_eval(self, expression: str) -> Any:
+        """Safely evaluate an expression."""
         try:
             expr_ast = ast.parse(expression, mode='eval').body
             return self._eval_ast(expr_ast)
@@ -211,13 +264,12 @@ class Stack:
             raise ValueError(f"Errore: L'espressione '{expression}' non è valida. ({e})")
 
     def _eval_ast(self, node: ast.AST) -> Any:
+        """Evaluate an AST node."""
         match node:
             case ast.Constant():
                 return node.value
-            
             case ast.Name():
                 return self._resolve_name(node.id)
-            
             case ast.BinOp():
                 left = self._eval_ast(node.left)
                 right = self._eval_ast(node.right)
@@ -226,32 +278,15 @@ class Stack:
                     return self.operators[operator_type](left, right)
                 else:
                     raise ValueError(f"Operatore '{operator_type}' non supportato.")
-            
             case ast.Compare():
                 left = self._eval_ast(node.left)
-                right = self._eval_ast(node.comparators[0])  # Assumes simple comparison
+                right = self._eval_ast(node.comparators[0])
                 operator_type = type(node.ops[0])
-                match operator_type:
-                    case ast.Gt:
-                        return left > right
-                    case ast.Lt:
-                        return left < right
-                    case ast.GtE:
-                        return left >= right
-                    case ast.LtE:
-                        return left <= right
-                    case ast.Eq:
-                        return left == right
-                    case ast.NotEq:
-                        return left != right
-                    case _:
-                        raise ValueError(f"Operatore di confronto '{operator_type}' non supportato.")
-            
+                return operator_type(left, right)  # Assuming operator_type can be called directly
             case _:
-                raise ValueError(f"Tipo di nodo AST '{type(node)}' non supportato.")
+                raise ValueError("Nodo non supportato nel AST.")
 
-
+# Test code (if file exists)
 stack = Stack()
-stack.carica_codice('codice.maft')
+stack.load_code('code.maft')
 stack.interpreta()
-
