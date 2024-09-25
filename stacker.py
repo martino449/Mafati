@@ -62,6 +62,8 @@ class Stack:
     def _handle_token(self, token: str) -> None:
         """Handle different types of tokens."""
         match token:
+            case _ if token == 'info':
+                self._info()
             case _ if 'py' in token:
                 self._handle_py(token)
             case _ if 'radquand' in token:
@@ -244,6 +246,13 @@ class Stack:
 
         self.functions[func_name] = func_code
 
+    def _info(self) -> None:
+        """Print information about Stacker, including the version number and
+        copyright/license information."""
+
+        print('Stacker version 1.3')
+        print('Copyright (C) 2024 Mario Pisano')
+        print('under the MIT License')
     def _execute_function(self, func_name: str) -> None:
         """Execute a previously defined function."""
         func_code = self.functions[func_name]

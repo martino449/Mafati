@@ -5,3 +5,5 @@ f = mario(5, 5)
 stampa f
 
 debug
+
+info
