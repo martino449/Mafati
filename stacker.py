@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 import math as mt
 
 class Stack:
-    def __init__(self, lunghezza: int = 256, librerie: List[str] = []) -> None:
+    def __init__(self, lunghezza: int = 2**16, librerie: List[str] = []) -> None:
         self.lunghezza = lunghezza
         self.stack: List[str] = []
         self.variables: Dict[str, Any] = {}
@@ -18,7 +18,6 @@ class Stack:
             ast.Div: operator.truediv,
         }
         self.p = 0
-
     def _load_library(self, libreria: str) -> None:
         """Load a library from a file and append its contents to the stack."""
         with open(libreria, 'r') as f:
@@ -28,7 +27,14 @@ class Stack:
         """Load code from a specified file into the stack."""
         try:
             with open(file_codice, 'r') as f:
-                self.stack = [line.strip() for line in f if line.strip()]
+                lines = [line for line in f if line]
+                for line in lines:
+                    if line.startswith('   '):
+                        self.stack.append(line)
+                    else:
+                        self.stack.append(line.strip())
+
+
             if len(self.stack) > self.lunghezza:
                 raise ValueError(f"Errore: La lunghezza della pila supera il limite ({self.lunghezza}).")
         except FileNotFoundError:
@@ -39,20 +45,25 @@ class Stack:
         while self.p < len(self.stack):
             token = self.stack[self.p]
             self.p += 1
-
-            if token.startswith('se '):
+            if token == '':
+                continue
+            elif token.startswith('se '):
                 self._handle_if(token)
             elif 'carica' in token:
                 self._load_library(token.replace('carica', '').strip() + '.mlib')
             elif 'var' in token:
                 for var in token.replace('var', '').replace(',', '').strip().split():
                     self.variables[var] = 0
+            
             else:
                 self._handle_token(token)
+
 
     def _handle_token(self, token: str) -> None:
         """Handle different types of tokens."""
         match token:
+            case _ if 'py' in token:
+                self._handle_py(token)
             case _ if 'radquand' in token:
                 self._handle_sqrt(token)
             case _ if 'quad' in token:
@@ -108,8 +119,8 @@ class Stack:
         # Check if the expression is a lambda function
         elif 'lambda' in expression:
             # Parse the lambda expression
-            param, body = expression.split(':', 1)
-            param = param.replace('lambda', '').strip()
+            param, body = expression.split('->', 1)
+            param = param.replace('lambda', '').replace('->', ':').strip()
             body = body.strip()
 
             # Define and store the lambda function
@@ -183,6 +194,27 @@ class Stack:
         var_name = parts[0].split()[-1]  # Extract var_name from the first token part
         self.variables[var_name] = mt.pow(self._resolve_name(parts[1].strip()), 2)
 
+    def _handle_py(self, token: str) -> None:
+        """Accumulate lines of code following the 'py' command and execute them as Python code."""
+
+        toval = ''  # Empty string to accumulate lines of code
+        while self.p < len(self.stack):
+            line = self.stack[self.p]
+            self.p += 1
+            if line == 'end':  # Stop reading lines when 'end' is encountered
+                break
+            toval += line + '\n'  # Concatenate each line with a newline for proper formatting
+        
+        
+        
+        print(toval)
+        exec(toval)  # Execute the accumulated Python code
+        
+
+
+
+        
+        
     def _handle_generic_operation(self, token: str) -> None:
         """Handle generic operations like addition."""
         parts = token.split()
@@ -286,7 +318,7 @@ class Stack:
             case _:
                 raise ValueError("Nodo non supportato nel AST.")
 
-# Test code (if file exists)
-stack = Stack()
-stack.load_code('code.maft')
-stack.interpreta()
+
+with open('stack.conf', 'r') as f:
+    exec(f.read())
+
