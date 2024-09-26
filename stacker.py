@@ -3,8 +3,11 @@ import ast
 from typing import Any, Dict, List
 import math as mt
 
+def Warning(func):
+    return lambda *args, **kwargs: (print(f"# Warning: {func.__name__} is broken"), None) or func(*args, **kwargs)
+
 class Stack:
-    def __init__(self, lunghezza: int = 2**16, librerie: List[str] = []) -> None:
+    def __init__(self, lunghezza: int = 2**8, librerie: List[str] = []) -> None:
         self.lunghezza = lunghezza
         self.stack: List[str] = []
         self.variables: Dict[str, Any] = {}
@@ -16,12 +19,15 @@ class Stack:
             ast.Sub: operator.sub,
             ast.Mult: operator.mul,
             ast.Div: operator.truediv,
+            ast.Pow: operator.pow
         }
         self.p = 0
+    
+    @Warning
     def _load_library(self, libreria: str) -> None:
         """Load a library from a file and append its contents to the stack."""
         with open(libreria, 'r') as f:
-            self.stack.extend(line.strip() for line in f if line.strip())
+            self.stack.append(line.strip() for line in f if line.strip())
 
     def load_code(self, file_codice: str) -> None:
         """Load code from a specified file into the stack."""
@@ -64,12 +70,10 @@ class Stack:
         match token:
             case _ if token == 'info':
                 self._info()
-            case _ if 'py' in token:
+            case _ if token == 'py':
                 self._handle_py(token)
             case _ if 'radquand' in token:
                 self._handle_sqrt(token)
-            case _ if 'quad' in token:
-                self._handle_quad(token)
             case _ if '=' in token:
                 self._assign_variable(token)
             case _ if token.startswith('cancella '):
@@ -187,15 +191,6 @@ class Stack:
         var_name = parts[0].split()[-1]
         self.variables[var_name] = mt.sqrt(self._resolve_name(parts[1].strip()))
 
-    def _handle_quad(self, token: str) -> None:
-        parts = token.split(',')
-        if len(parts) < 2:
-            print(f"Errore: token '{token}' non contiene abbastanza parti per il quadrato.")
-            return
-
-        var_name = parts[0].split()[-1]  # Extract var_name from the first token part
-        self.variables[var_name] = mt.pow(self._resolve_name(parts[1].strip()), 2)
-
     def _handle_py(self, token: str) -> None:
         """Accumulate lines of code following the 'py' command and execute them as Python code."""
 
@@ -209,7 +204,7 @@ class Stack:
         
         
         
-        print(toval)
+        #print(toval)
         exec(toval)  # Execute the accumulated Python code
         
 
