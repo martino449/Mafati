@@ -213,7 +213,7 @@ class Stack:
         """Print information about Stacker, including the version number and
         copyright/license information."""
 
-        print('Stacker version 1.3')
+        print('Stacker version 1.0')
         print('Copyright (C) 2024 Mario Pisano')
         print('under the MIT License')
     def _execute_function(self, func_name: str) -> None:
