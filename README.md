@@ -1,16 +1,81 @@
-# Mafati
-## Stack Interpreter
-This program implements a Stack class that interprets and executes a custom scripting language. It supports variables, functions, conditional statements, and library loading, allowing for dynamic code execution and manipulation.
+# Mafati: A Functional Interpreted Language
 
-### Features:
-Dynamic Variable Management: Define and manipulate variables, including constants that cannot be modified once set.
-Function Definitions: Create reusable functions with a simple syntax and execute them within the interpreter.
-Library Support: Load external libraries to extend functionality and add new capabilities.
-Conditional Logic: Implement if and else statements to control the flow of execution based on variable values.
-Safe Expression Evaluation: Evaluate mathematical expressions and support basic operations (addition, subtraction, multiplication, division, power).
-Debugging Tools: Access debug information for troubleshooting and understanding program state.
-How It Works:
-The interpreter reads lines of code from a specified file, processes each line, and executes the corresponding actions. The stack size is adjustable, and the interpreter ensures that operations remain within defined limits.
+Welcome to **Mafati**, an interpreted functional programming language designed to be simple yet powerful.
+It’s perfect for those seeking a minimalistic and functional approach to programming.
 
-This project aims to provide a simple yet powerful platform for experimenting with programming concepts and exploring the design of interpreters.
+Mafati runs through an interpreter called **Stacker**, which is built in Python. Whether you’re creating small utilities or experimenting with functional programming concepts, Mafati offers flexibility and ease of use.
 
+## Installation Guide
+
+To run Mafati, you’ll need Python (version 3.8 or later). Follow these steps:
+
+### Step 1: Install Python
+Download and install Python from the official [Python website](https://www.python.org/downloads/). Ensure that Python is added to your system's path during installation.
+
+### Step 2: Install stacker from the repository
+
+### Step 3: Setup
+create a folder for your projects
+create a stack.conf file
+insert:
+```
+stack = Stack()
+stack.load_code('code.maft')
+stack.interpret()
+```
+create a code.maft file
+#### Write your code in there and execute stacker.py to interpret
+
+## Mafati Syntax Overview
+
+### 1. **Arithmetic Operations**
+Mafati supports basic arithmetic operations like addition, subtraction, multiplication, and division.
+
+```maf
+x = 5 + 3
+y = x * 2
+out y  
+```
+
+### 2. **Variable Assignment**
+You can assign variables and use them in expressions.
+
+```maf
+x = 10
+y = x + 5
+out y 
+```
+
+### 3. **Lambda Functions**
+Mafati supports lambda expressions, allowing you to define inline functions.
+
+```maf
+square = n -> n * n
+f = square(4)  
+out f
+```
+
+### 4. **Control Flow with `if` Statements**
+Conditional execution is handled using `if` statements, similar to traditional languages.
+
+```maf
+x = 10
+if x > 5 then
+out x is greater than 5
+else
+out x is less than or equal to 5
+end
+```
+
+### 5. **Dynamic Python Code Execution**
+Mafati allows you to embed Python code for complex operations.
+
+```maf
+py
+def greet():
+    print("Hello from Python!")
+
+
+greet()
+end
+```
