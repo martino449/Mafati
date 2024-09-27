@@ -18,6 +18,7 @@ Download and install Python from the official [Python website](https://www.pytho
 create a folder for your projects
 ######
 create a stack.conf file
+######
 insert:
 ```
 stack = Stack()
