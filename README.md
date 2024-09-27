@@ -78,4 +78,15 @@ def greet():
 
 greet()
 end
+
+```
+### 6. **Non-lambda functions**
+functions are defined like python but they need an end and need to be added to the global scope with a **include** function (stack.include(<name in the global scope>, <host scope function>):
+```maf
+def mario(x, y):
+    reurn x + y
+include('mario', mario)
+end
+f = mario(5,5)
+out f
 ```
