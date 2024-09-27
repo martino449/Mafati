@@ -62,7 +62,15 @@ class Stack:
 
 
     def _handle_token(self, token: str) -> None:
-        """Handle different types of tokens."""
+        """
+        Handle different types of tokens.
+
+        Args:
+            token (str): The token to be handled.
+
+        Returns:
+            None
+        """
         match token:
             case _ if token == 'info':
                 self._info()
@@ -99,8 +107,17 @@ class Stack:
         """Assign a value to a variable, including lambda functions and lambda calls."""
         var_name, expression = map(str.strip, token.split('=', 1))
 
+        if '..' in expression:
+            start, end = map(int, expression.split('..'))
+            self.variables[var_name] = list(range(start, end + 1))
+            
+        # Check if it's a list, e.g., x = [1, 2, 3]
+        elif '[' and ']' in expression:
+            value = eval(expression)
+            self.variables[var_name] = value
+
         # Check if it's a lambda call, e.g., x(5)
-        if '(' in expression and ')' in expression:
+        elif '(' in expression and ')' in expression:
             func_name, arg_str = expression.split('(', 1)
             func_name = func_name.strip()
             args = arg_str.replace(')', '').split(',')
