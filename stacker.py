@@ -51,8 +51,11 @@ class Stack:
             self.p += 1
             if token == '':
                 continue
-            elif token.startswith('se '):
+            
+            elif token.startswith('if '):
+
                 self._handle_if(token)
+
             
             else:
                 self._handle_token(token)
@@ -71,7 +74,7 @@ class Stack:
                 self._assign_variable(token)
             case _ if token.startswith('delete'):
                 self._delete_variable(token)
-            case _ if token.startswith('out'):
+            case _ if 'out' in token:
                 self._handle_print(token.replace('out', '').strip())
             #case _ if token.startswith('aggiungi'):
             #   self._handle_generic_operation(token)
@@ -138,9 +141,7 @@ class Stack:
         """Print debug information."""
         print("=== DEBUG INFO ===")
         print(f"Stack: {self.stack}")
-        print(f"Variables: {self.variables}")
-        print(f"Constants: {self.const}")
-        print(f"Functions: {self.functions}")
+        print(f"Variables and functions: {self.variables}")
         print("==================")
 
     def _handle_print(self, item: str) -> None:
@@ -166,7 +167,8 @@ class Stack:
         self.variables[var_name] = result
         print(f"{var_name} = {result}")
     
-    def add(self, name, value):
+    def include(self, name, value):
+        """Include a value from the host Python environment into the stacker environment."""        
         self.variables[name] = value
 
     def _handle_sqrt(self, token: str) -> None:
@@ -213,7 +215,7 @@ class Stack:
         """Print information about Stacker, including the version number and
         copyright/license information."""
 
-        print('Stacker version 1.0')
+        print('Stacker version 1.1')
         print('Copyright (C) 2024 Mario Pisano')
         print('under the MIT License')
     def _execute_function(self, func_name: str) -> None:
@@ -230,13 +232,22 @@ class Stack:
         self.p = original_p
 
     def _handle_if(self, token: str) -> None:
-        """Handle if statements."""
-        condition = token.split('if ')[1].split(' then')[0].strip()
-        if self._safe_eval(condition):
-            return
-        else:
+        """Handle if statements with AST evaluation of the condition."""
+        try:
+            # Extract the condition from the token string (strip 'then' part)
+            condition = token.replace('then', '').replace('if', '').strip()
+            
+            # Safely evaluate the condition using _safe_eval (only condition part)
+            if self._safe_eval(condition):
+                return  # Condition is true, so continue execution
+            
+            # Condition is false, skip lines until 'else' or 'end' is found
             while self.p < len(self.stack) and not self.stack[self.p].startswith('else') and not self.stack[self.p].startswith('end'):
                 self.p += 1
+                
+        except Exception as e:
+            print(f"Error: invalid if condition '{condition}' ({e})")
+
 
     def _handle_else(self) -> None:
         """Handle else statements."""
