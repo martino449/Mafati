@@ -46,8 +46,8 @@ y = x + 5
 out y 
 ```
 
-### 3. **Lambda Functions**
-Mafati supports lambda expressions, allowing you to define inline functions.
+### 3. **Inline Functions**
+Mafati supports inline functions.
 
 ```maf
 square = n -> n * n
@@ -55,7 +55,7 @@ f = square(4)
 out f
 ```
 
-### 4. **Control Flow with `if` Statements**
+### 4. **Control Flow**
 Conditional execution is handled using `if` statements, similar to traditional languages.
 
 ```maf
