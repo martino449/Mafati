@@ -1,7 +1,6 @@
-mario = lambda x, y -> x + y
-stampa x
-f = mario(5, 10)
-
-stampa f
-
-aspetta
+x = 10
+if x > 5 then
+out x is greater than 5
+else
+out x is less than or equal to 5
+end

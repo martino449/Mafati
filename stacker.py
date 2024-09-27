@@ -11,8 +11,6 @@ class Stack:
         self.lunghezza = lunghezza
         self.stack: List[str] = []
         self.variables: Dict[str, Any] = {}
-        self.const: Dict[str, Any] = {}
-        self.functions: Dict[str, List[str]] = {}
         self.librerie = librerie
         self.operators = {
             ast.Add: operator.add,
@@ -46,7 +44,7 @@ class Stack:
         except FileNotFoundError:
             raise FileNotFoundError(f"Errore: Il file '{file_codice}' non esiste.")
 
-    def interpreta(self) -> None:
+    def interpret(self) -> None:
         """Interpret and execute the code in the stack."""
         while self.p < len(self.stack):
             token = self.stack[self.p]
@@ -55,11 +53,6 @@ class Stack:
                 continue
             elif token.startswith('se '):
                 self._handle_if(token)
-            elif 'carica' in token:
-                self._load_library(token.replace('carica', '').strip() + '.mlib')
-            elif 'var' in token:
-                for var in token.replace('var', '').replace(',', '').strip().split():
-                    self.variables[var] = 0
             
             else:
                 self._handle_token(token)
@@ -70,33 +63,29 @@ class Stack:
         match token:
             case _ if token == 'info':
                 self._info()
-            case _ if token == 'py':
+            case _ if token.startswith('def') or token.startswith('py'):
                 self._handle_py(token)
             case _ if 'radquand' in token:
                 self._handle_sqrt(token)
             case _ if '=' in token:
                 self._assign_variable(token)
-            case _ if token.startswith('cancella '):
+            case _ if token.startswith('delete'):
                 self._delete_variable(token)
-            case _ if token.startswith('stampa'):
-                self._handle_print(token.replace('stampa', '').strip())
-            case _ if token.startswith('aggiungi'):
-                self._handle_generic_operation(token)
-            case _ if token.startswith('moltiplica'):
-                self._handle_operation(token, operator.mul)
-            case _ if token.startswith('somma'):
-                self._handle_operation(token, sum)
-            case _ if token.startswith('def '):
-                self._define_function(token)
-            case token if token in self.functions:
-                self._execute_function(token)
-            case 'altrimenti':
+            case _ if token.startswith('out'):
+                self._handle_print(token.replace('out', '').strip())
+            #case _ if token.startswith('aggiungi'):
+            #   self._handle_generic_operation(token)
+            #case _ if token.startswith('moltiplica'):
+            #    self._handle_operation(token, operator.mul)
+            #case _ if token.startswith('somma'):
+            #    self._handle_operation(token, sum)
+            case 'else':
                 self._handle_else()
             case 'end':
                 pass
             case 'debug':
                 self._debug_info()
-            case token if token in {'aspetta', 'pause'}:
+            case token if token in {'stop', 'pause'}:
                 input("Premi un tasto per continuare...")
             case _ if '#' in token:
                 pass  # Ignore comments
@@ -123,10 +112,10 @@ class Stack:
                 raise ValueError(f"Errore: '{func_name}' non è una funzione valida.")
         
         # Check if the expression is a lambda function
-        elif 'lambda' in expression:
+        elif '->' in expression:
             # Parse the lambda expression
             param, body = expression.split('->', 1)
-            param = param.replace('lambda', '').replace('->', ':').strip()
+            param = param.replace('->', ':').strip()
             body = body.strip()
 
             # Define and store the lambda function
@@ -135,13 +124,7 @@ class Stack:
         # Regular variable assignment
         else:
             value = self._safe_eval(expression)
-            if var_name.startswith('const_'):
-                if var_name in self.const:
-                    print(f"Errore: La costante '{var_name}' non può essere modificata.")
-                else:
-                    self.const[var_name] = value
-            else:
-                self.variables[var_name] = value
+            self.variables[var_name] = value
 
     def _delete_variable(self, token: str) -> None:
         """Delete a variable from the stack."""
@@ -164,8 +147,6 @@ class Stack:
         """Print the value of a variable or constant."""
         if item in self.variables:
             print(self.variables[item])
-        elif item in self.const:
-            print(self.const[item])
         else:
             print(item)
 
@@ -184,6 +165,9 @@ class Stack:
 
         self.variables[var_name] = result
         print(f"{var_name} = {result}")
+    
+    def add(self, name, value):
+        self.variables[name] = value
 
     def _handle_sqrt(self, token: str) -> None:
         """Calculate the square root and store the result in a variable."""
@@ -195,6 +179,8 @@ class Stack:
         """Accumulate lines of code following the 'py' command and execute them as Python code."""
 
         toval = ''  # Empty string to accumulate lines of code
+        if token.startswith('def'):
+            toval += token + '\n'
         while self.p < len(self.stack):
             line = self.stack[self.p]
             self.p += 1
@@ -205,13 +191,7 @@ class Stack:
         
         
         #print(toval)
-        exec(toval)  # Execute the accumulated Python code
-        
-
-
-
-        
-        
+        exec(toval)  # Execute the accumulated Python code 
     def _handle_generic_operation(self, token: str) -> None:
         """Handle generic operations like addition."""
         parts = token.split()
@@ -227,25 +207,13 @@ class Stack:
         self.variables[var_name] = result
         print(f"{var_name} = {result}")
 
-    def _define_function(self, token: str) -> None:
-        """Define a new function."""
-        func_name = token.split()[1]
-        func_code = []
 
-        while self.p < len(self.stack):
-            line = self.stack[self.p]
-            self.p += 1
-            if line == 'end':
-                break
-            func_code.append(line)
-
-        self.functions[func_name] = func_code
 
     def _info(self) -> None:
         """Print information about Stacker, including the version number and
         copyright/license information."""
 
-        print('Stacker version 1.4')
+        print('Stacker version 1.3')
         print('Copyright (C) 2024 Mario Pisano')
         print('under the MIT License')
     def _execute_function(self, func_name: str) -> None:
@@ -256,18 +224,18 @@ class Stack:
 
         self.stack = func_code
         self.p = 0
-        self.interpreta()
+        self.interpret()
 
         self.stack = original_stack
         self.p = original_p
 
     def _handle_if(self, token: str) -> None:
         """Handle if statements."""
-        condition = token.split('se ')[1].split(' allora')[0].strip()
+        condition = token.split('if ')[1].split(' then')[0].strip()
         if self._safe_eval(condition):
             return
         else:
-            while self.p < len(self.stack) and not self.stack[self.p].startswith('altrimenti') and not self.stack[self.p].startswith('end'):
+            while self.p < len(self.stack) and not self.stack[self.p].startswith('else') and not self.stack[self.p].startswith('end'):
                 self.p += 1
 
     def _handle_else(self) -> None:
@@ -278,9 +246,7 @@ class Stack:
     def _resolve_name(self, name: str) -> Any:
         """Resolve a variable or constant name to its value."""
         if name in self.variables:
-            return self.variables[name]
-        elif name in self.const:
-            return self.const[name]
+            return self.variables[str(name)]
         else:
             return float(name)  # Assume it's a number if not found
 
