@@ -16,6 +16,7 @@ Download and install Python from the official [Python website](https://www.pytho
 
 ### Step 3: Setup
 create a folder for your projects
+######
 create a stack.conf file
 insert:
 ```
