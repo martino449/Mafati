@@ -60,16 +60,10 @@ class Stack:
             else:
                 self._handle_token(token)
 
-
+# Modify _handle_token to remove Python imports
     def _handle_token(self, token: str) -> None:
         """
-        Handle different types of tokens.
-
-        Args:
-            token (str): The token to be handled.
-
-        Returns:
-            None
+        Handle different types of tokens, now including 'for' loops.
         """
         match token:
             case _ if token == 'info':
@@ -84,12 +78,6 @@ class Stack:
                 self._delete_variable(token)
             case _ if 'out' in token:
                 self._handle_print(token.replace('out', '').strip())
-            #case _ if token.startswith('aggiungi'):
-            #   self._handle_generic_operation(token)
-            #case _ if token.startswith('moltiplica'):
-            #    self._handle_operation(token, operator.mul)
-            #case _ if token.startswith('somma'):
-            #    self._handle_operation(token, sum)
             case 'else':
                 self._handle_else()
             case 'end':
@@ -100,8 +88,43 @@ class Stack:
                 input("Premi un tasto per continuare...")
             case _ if '#' in token:
                 pass  # Ignore comments
+            case _ if token.startswith('for'):   # NEW: for loop detection
+                self._handle_for(token)          # Call the new method
             case _:
                 print(f"Errore: '{token}' non è un'espressione valida.")
+
+    def _handle_for(self, token: str) -> None:
+        """
+        Handle 'for' loops in the format: for var in start..end.
+        The loop body runs until 'end' is encountered.
+        """
+        try:
+            # Parse the for loop structure, e.g., 'for i in 1..10'
+            parts = token.replace('for', '').strip().split(' in ')
+            var_name = parts[0].strip()
+            range_part = parts[1].strip()
+
+            # Extract the start and end of the range (e.g., '1..10')
+            start, end = map(int, range_part.split('..'))
+
+            # Accumulate the loop body (lines between 'for' and 'end')
+            loop_body = []
+            while self.p < len(self.stack):
+                line = self.stack[self.p]
+                self.p += 1
+                if line.strip() == 'end':
+                    break
+                loop_body.append(line)
+
+            # Execute the loop
+            for value in range(start, end + 1):
+                self.variables[var_name] = value  # Set the loop variable in the environment
+                for line in loop_body:            # Execute each line in the loop body
+                    self._handle_token(line)
+
+        except Exception as e:
+            print(f"Errore: invalid 'for' loop syntax ({e})")
+
 
     def _assign_variable(self, token: str) -> None:
         """Assign a value to a variable, including lambda functions and lambda calls."""
@@ -168,22 +191,6 @@ class Stack:
         else:
             print(item)
 
-    def _handle_operation(self, token: str, op: Any) -> None:
-        """Perform an operation and store the result in a variable."""
-        parts = token.split(',')
-        var_name = parts[0].split()[-1]
-        operands = [self._resolve_name(part.strip()) for part in parts[1:]]
-
-        if op == sum:
-            result = sum(operands)
-        else:
-            result = operands[0]
-            for operand in operands[1:]:
-                result = op(result, operand)
-
-        self.variables[var_name] = result
-        print(f"{var_name} = {result}")
-    
     def include(self, name, value):
         """Include a value from the host Python environment into the stacker environment."""        
         self.variables[name] = value
@@ -211,21 +218,6 @@ class Stack:
         
         #print(toval)
         exec(toval)  # Execute the accumulated Python code 
-    def _handle_generic_operation(self, token: str) -> None:
-        """Handle generic operations like addition."""
-        parts = token.split()
-        command = parts[1]
-        var_name = parts[2].rstrip(',')
-        operands = [self._resolve_name(part.strip().rstrip(',')) for part in parts[3:]]
-
-        if command == 'somma':
-            result = sum(operands)
-        else:
-            raise ValueError(f"Operazione '{command}' non riconosciuta.")
-
-        self.variables[var_name] = result
-        print(f"{var_name} = {result}")
-
 
 
     def _info(self) -> None:
