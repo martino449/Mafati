@@ -97,4 +97,5 @@ out f
 ```maf
 for i in 1..50
     out Hello, World!
+end
 ```
