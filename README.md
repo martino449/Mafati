@@ -92,3 +92,9 @@ end
 f = mario(5,5)
 out f
 ```
+
+### 7. **For loops**
+```maf
+for i in 1..50
+    out Hello, World!
+```
